@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sofia
+      POSTGRES_PASSWORD: sofia
+      POSTGRES_DB: sofia
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sofia"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadata:/chroma/chroma
+    environment:
+      IS_PERSISTENT: "TRUE"
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  pgdata:
+  chromadata:
