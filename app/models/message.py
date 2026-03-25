@@ -11,7 +11,7 @@ from app.db.base import Base, UUIDMixin
 
 class MessageRole(str, enum.Enum):
     CLIENT = "client"
-    SOFIA = "sofia"
+    OTTO = "otto"
     SYSTEM = "system"
 
 

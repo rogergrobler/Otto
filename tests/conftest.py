@@ -19,7 +19,7 @@ def mock_settings(monkeypatch):
 def mock_llm():
     """Mock LLM provider."""
     llm = AsyncMock()
-    llm.chat.return_value = "This is a test coaching response from Sofia."
+    llm.chat.return_value = "This is a test response from Otto."
     llm.embed.return_value = [[0.1] * 1536]
     return llm
 

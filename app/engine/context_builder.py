@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.llm.prompts import SOFIA_DEFAULT_SOUL, build_system_prompt
+from app.llm.prompts import OTTO_DEFAULT_SOUL, build_system_prompt
 from app.models.client import Client
 from app.models.client_coursework import AssignmentStatus, ClientCoursework
 from app.models.conversation import Conversation
@@ -94,7 +94,7 @@ async def build_context(
         Tuple of (system_prompt, messages_list)
     """
     # Gather all context pieces
-    soul_doc = await get_soul_document(db) or SOFIA_DEFAULT_SOUL
+    soul_doc = await get_soul_document(db) or OTTO_DEFAULT_SOUL
     training_notes = await get_training_notes(db)
     client_profile = await get_client_profile(client)
     coursework_context = await get_active_coursework(db, str(client.id))

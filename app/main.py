@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("Starting Sofia AI Coaching Assistant")
+    logger.info("Starting Otto Digital Health Twin")
 
     # Initialize Telegram bot
     from app.telegram.bot import setup_bot, shutdown_bot
@@ -30,11 +30,11 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     await shutdown_bot()
-    logger.info("Sofia shutting down")
+    logger.info("Otto shutting down")
 
 
 app = FastAPI(
-    title="Sofia — AI Coaching Assistant",
+    title="Otto — Digital Health Twin",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -52,4 +52,4 @@ async def index():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "sofia"}
+    return {"status": "ok", "service": "otto"}

@@ -23,7 +23,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         if client:
             await update.message.reply_text(
-                f"Welcome back, {client.full_name}! I'm Sofia, your coaching assistant. "
+                f"Welcome back, {client.full_name}! I'm Otto, your health assistant. "
                 "How can I support you today?"
             )
         else:
@@ -39,12 +39,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     await db.commit()
                     await update.message.reply_text(
                         f"Hi {client.full_name}! I've linked your Telegram account. "
-                        "I'm Sofia, your coaching assistant. How can I support you today?"
+                        "I'm Otto, your health assistant. How can I support you today?"
                     )
                     return
 
             await update.message.reply_text(
-                "Hi there! I'm Sofia, an AI coaching assistant. "
+                "Hi there! I'm Otto, your digital health twin. "
                 "It looks like you haven't been registered yet. "
                 "Please ask your coach to set up your account, and then come back!"
             )

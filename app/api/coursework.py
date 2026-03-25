@@ -82,7 +82,7 @@ async def assign_coursework(
                 await send_message(
                     client.telegram_chat_id,
                     f"Hi {client.full_name}! You have new coursework assigned: **{cw.title}**\n\n"
-                    f"{cw.description or 'Check in with Sofia to get started!'}",
+                    f"{cw.description or 'Check in with Otto to get started!'}",
                 )
             except Exception:
                 pass  # Don't fail the assignment if Telegram ping fails

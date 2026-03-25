@@ -66,7 +66,7 @@ async def process_message(
     text: str,
     channel: Channel,
 ) -> str:
-    """Process an incoming client message and return Sofia's response."""
+    """Process an incoming client message and return Otto's response."""
     # Get or create conversation
     conversation = await get_or_create_conversation(db, client, channel)
 
@@ -91,13 +91,13 @@ async def process_message(
         system=system_prompt,
     )
 
-    # Store Sofia's response
-    sofia_message = Message(
+    # Store Otto's response
+    otto_message = Message(
         conversation_id=conversation.id,
-        role=MessageRole.SOFIA,
+        role=MessageRole.OTTO,
         content=response_text,
     )
-    db.add(sofia_message)
+    db.add(otto_message)
     await db.flush()
 
     return response_text

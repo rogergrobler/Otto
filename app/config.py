@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://sofia:sofia@localhost:5432/sofia"
+    DATABASE_URL: str = "postgresql+asyncpg://otto:otto@localhost:5432/otto"
 
     # LLM
     LLM_PROVIDER: str = "claude"

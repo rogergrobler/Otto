@@ -1,7 +1,7 @@
 [project]
-name = "sofia"
+name = "otto"
 version = "0.1.0"
-description = "Sofia — AI Coaching Assistant"
+description = "Otto — Digital Health Twin"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
@@ -19,6 +19,7 @@ dependencies = [
     "chromadb>=0.5.0",
     "langchain-text-splitters>=0.3.0",
     "pypdf>=4.0.0",
+    "pgvector>=0.3.0",
     "python-telegram-bot>=21.0",
     "httpx>=0.27.0",
     "apscheduler>=3.10.0",
