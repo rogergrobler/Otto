@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from app.db.session import async_session
-from app.engine.coaching_engine import process_message
+from app.engine.health_engine import process_health_message
 from app.models.client import Client
 from app.models.conversation import Channel
 
@@ -73,7 +73,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
 
         try:
-            response = await process_message(db, client, text, Channel.TELEGRAM)
+            response = await process_health_message(db, client, text, Channel.TELEGRAM)
+            await db.commit()
             await db.commit()
             await update.message.reply_text(response)
         except Exception:
