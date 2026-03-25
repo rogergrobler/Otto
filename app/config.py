@@ -2,8 +2,17 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Database
+    # Database — Railway provides postgresql://, we need postgresql+asyncpg://
     DATABASE_URL: str = "postgresql+asyncpg://otto:otto@localhost:5432/otto"
+
+    @property
+    def async_database_url(self) -> str:
+        url = self.DATABASE_URL
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return url
 
     # LLM
     LLM_PROVIDER: str = "claude"
