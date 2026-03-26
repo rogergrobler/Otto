@@ -9,6 +9,7 @@ from app.db.base import Base, TimestampMixin, UUIDMixin
 class UserRole(str, enum.Enum):
     SUPER_ADMIN = "super_admin"
     ADMIN = "admin"
+    COACH = "coach"
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -22,3 +23,4 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     clients = relationship("Client", back_populates="created_by")
     training_notes = relationship("TrainingNote", back_populates="user")
+    coach_notes = relationship("CoachNote", back_populates="coach")

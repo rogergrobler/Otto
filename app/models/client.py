@@ -63,3 +63,7 @@ class Client(Base, UUIDMixin, TimestampMixin):
     lab_results = relationship("LabResult", back_populates="client", order_by="LabResult.test_date.desc()")
     nutrition_logs = relationship("NutritionLog", back_populates="client", order_by="NutritionLog.log_date.desc()")
     goals = relationship("Goal", back_populates="client")
+    risk_scores = relationship("RiskScore", back_populates="client")
+    wearable_data = relationship("WearableData", back_populates="client", order_by="WearableData.data_date.desc()")
+    nudges = relationship("Nudge", back_populates="client")
+    coach_notes = relationship("CoachNote", back_populates="client")

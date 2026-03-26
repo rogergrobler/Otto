@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.config import settings
+from app.tasks.nudge_scheduler import create_scheduler
 
 logging.basicConfig(
     level=logging.DEBUG if settings.APP_ENV == "development" else logging.INFO,
@@ -26,9 +27,15 @@ async def lifespan(app: FastAPI):
 
     await setup_bot()
 
+    # Start nudge scheduler
+    scheduler = create_scheduler()
+    scheduler.start()
+    logger.info("Nudge scheduler started")
+
     yield
 
     # Shutdown
+    scheduler.shutdown(wait=False)
     await shutdown_bot()
     logger.info("Otto shutting down")
 

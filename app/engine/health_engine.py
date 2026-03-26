@@ -21,7 +21,9 @@ from app.models.goal import Goal, GoalStatus
 from app.models.lab_result import LabResult
 from app.models.message import Message, MessageRole
 from app.models.nutrition_log import NutritionLog
+from app.models.risk_score import RiskScore
 from app.models.training_note import TrainingNote
+from app.models.wearable_data import WearableData
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +125,47 @@ HEALTH_TOOLS = [
                 },
             },
             "required": ["description", "meal_type"],
+        },
+    },
+    {
+        "name": "query_risk",
+        "description": (
+            "Query the user's current risk scores across the Four Horsemen domains "
+            "(cardiovascular, metabolic, neurological, cancer). Returns RAG status, "
+            "score, interpretation, contributing factors, and data gaps. Use when the "
+            "user asks about their health risk, overall health score, or any disease domain."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string",
+                    "description": (
+                        "Filter to a specific domain: cardiovascular, metabolic, "
+                        "neurological, cancer. Leave empty to get all domains."
+                    ),
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "query_wearables",
+        "description": (
+            "Query the user's wearable data: sleep, HRV, resting heart rate, recovery score, "
+            "readiness, Zone 2 minutes, steps, VO2 max, and strain. Use when the user asks "
+            "about their sleep, recovery, training load, or wearable metrics."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days to look back (max 30). Default 7.",
+                    "default": 7,
+                },
+            },
+            "required": [],
         },
     },
     {
@@ -317,6 +360,71 @@ async def _execute_log_meal(db: AsyncSession, client_id, inputs: dict) -> dict:
     return {"success": True, "log_id": str(log.id), "message": f"Meal logged for {log_date}."}
 
 
+async def _execute_query_risk(db: AsyncSession, client_id, inputs: dict) -> dict:
+    domain = inputs.get("domain")
+    query = select(RiskScore).where(RiskScore.client_id == client_id)
+    if domain:
+        query = query.where(RiskScore.domain == domain)
+
+    result = await db.execute(query)
+    scores = result.scalars().all()
+
+    if not scores:
+        return {"scores": [], "message": "No risk scores calculated yet. Use /health/risk/calculate to generate them."}
+
+    from app.services.risk_engine import calculate_health_score
+    return {
+        "health_score": calculate_health_score(scores),
+        "scores": [
+            {
+                "domain": s.domain.value,
+                "score": s.score,
+                "rag_status": s.rag_status.value,
+                "interpretation": s.interpretation,
+                "contributing_factors": s.contributing_factors,
+                "data_gaps": s.data_gaps,
+                "last_calculated": str(s.last_calculated) if s.last_calculated else None,
+            }
+            for s in scores
+        ],
+    }
+
+
+async def _execute_query_wearables(db: AsyncSession, client_id, inputs: dict) -> dict:
+    days = min(inputs.get("days", 7), 30)
+    cutoff = date.today() - timedelta(days=days - 1)
+
+    result = await db.execute(
+        select(WearableData)
+        .where(WearableData.client_id == client_id, WearableData.data_date >= cutoff)
+        .order_by(WearableData.data_date.desc())
+    )
+    rows = result.scalars().all()
+
+    if not rows:
+        return {"records": [], "message": f"No wearable data found in the last {days} days."}
+
+    return {
+        "records": [
+            {
+                "date": str(r.data_date),
+                "source": r.source.value,
+                "sleep_hours": r.sleep_hours,
+                "sleep_efficiency": r.sleep_efficiency,
+                "hrv_ms": r.hrv_ms,
+                "resting_hr": r.resting_hr,
+                "recovery_score": r.recovery_score,
+                "readiness_score": r.readiness_score,
+                "strain_score": r.strain_score,
+                "steps": r.steps,
+                "zone2_minutes": r.zone2_minutes,
+                "vo2_max": r.vo2_max,
+            }
+            for r in rows
+        ]
+    }
+
+
 async def _execute_update_goal(db: AsyncSession, inputs: dict) -> dict:
     import uuid as _uuid
 
@@ -360,6 +468,10 @@ async def execute_tool(
             return await _execute_query_goals(db, client_id, tool_input)
         elif tool_name == "log_meal":
             return await _execute_log_meal(db, client_id, tool_input)
+        elif tool_name == "query_risk":
+            return await _execute_query_risk(db, client_id, tool_input)
+        elif tool_name == "query_wearables":
+            return await _execute_query_wearables(db, client_id, tool_input)
         elif tool_name == "update_goal":
             return await _execute_update_goal(db, tool_input)
         else:
