@@ -1,9 +1,14 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, func
+from sqlalchemy import DateTime, Enum as _SAEnum, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+def PgEnum(enum_cls, **kwargs):
+    """SQLAlchemy Enum that stores the .value (not .name) for Python enums."""
+    return _SAEnum(enum_cls, values_callable=lambda x: [e.value for e in x], **kwargs)
 
 
 class Base(DeclarativeBase):

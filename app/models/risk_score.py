@@ -1,12 +1,12 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.db.base import Base, UUIDMixin
+from app.db.base import Base, PgEnum, UUIDMixin
 
 
 class RiskDomain(str, enum.Enum):
@@ -29,10 +29,10 @@ class RiskScore(Base, UUIDMixin):
     client_id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False, index=True
     )
-    domain: Mapped[RiskDomain] = mapped_column(Enum(RiskDomain), nullable=False, index=True)
+    domain: Mapped[RiskDomain] = mapped_column(PgEnum(RiskDomain), nullable=False, index=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)  # 0–100
     rag_status: Mapped[RAGStatus] = mapped_column(
-        Enum(RAGStatus), nullable=False, default=RAGStatus.INSUFFICIENT_DATA
+        PgEnum(RAGStatus), nullable=False, default=RAGStatus.INSUFFICIENT_DATA
     )
     interpretation: Mapped[str | None] = mapped_column(Text, nullable=True)
     contributing_factors: Mapped[list | None] = mapped_column(JSON, nullable=True)

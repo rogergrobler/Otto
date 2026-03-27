@@ -1,12 +1,12 @@
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.db.base import Base, UUIDMixin
+from app.db.base import Base, PgEnum, UUIDMixin
 
 
 class MealType(str, enum.Enum):
@@ -25,7 +25,7 @@ class NutritionLog(Base, UUIDMixin):
     )
     log_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     meal_type: Mapped[MealType] = mapped_column(
-        Enum(MealType), nullable=False, default=MealType.OTHER
+        PgEnum(MealType), nullable=False, default=MealType.OTHER
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     calories: Mapped[int | None] = mapped_column(Integer, nullable=True)

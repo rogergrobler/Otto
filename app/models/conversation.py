@@ -1,12 +1,12 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text
+from sqlalchemy import DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.db.base import Base, UUIDMixin
+from app.db.base import Base, PgEnum, UUIDMixin
 
 
 class Channel(str, enum.Enum):
@@ -20,7 +20,7 @@ class Conversation(Base, UUIDMixin):
     client_id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False
     )
-    channel: Mapped[Channel] = mapped_column(Enum(Channel), nullable=False)
+    channel: Mapped[Channel] = mapped_column(PgEnum(Channel), nullable=False)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

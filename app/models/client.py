@@ -1,11 +1,11 @@
 import enum
 from datetime import date
 
-from sqlalchemy import BigInteger, Boolean, Date, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Date, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, TimestampMixin, UUIDMixin
+from app.db.base import Base, PgEnum, TimestampMixin, UUIDMixin
 
 
 class BiologicalSex(str, enum.Enum):
@@ -33,11 +33,11 @@ class Client(Base, UUIDMixin, TimestampMixin):
 
     # Health profile
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
-    sex: Mapped[BiologicalSex | None] = mapped_column(Enum(BiologicalSex), nullable=True)
+    sex: Mapped[BiologicalSex | None] = mapped_column(PgEnum(BiologicalSex), nullable=True)
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     subscription_tier: Mapped[SubscriptionTier] = mapped_column(
-        Enum(SubscriptionTier), nullable=False, default=SubscriptionTier.STANDARD
+        PgEnum(SubscriptionTier), nullable=False, default=SubscriptionTier.STANDARD
     )
 
     # Daily nutrition targets (personalised; defaults applied on registration)

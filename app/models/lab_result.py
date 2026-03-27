@@ -1,12 +1,12 @@
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, Float, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.db.base import Base, UUIDMixin
+from app.db.base import Base, PgEnum, UUIDMixin
 
 
 class BiomarkerFlag(str, enum.Enum):
@@ -33,7 +33,7 @@ class LabResult(Base, UUIDMixin):
     ref_range_high: Mapped[float | None] = mapped_column(Float, nullable=True)
     optimal_low: Mapped[float | None] = mapped_column(Float, nullable=True)
     optimal_high: Mapped[float | None] = mapped_column(Float, nullable=True)
-    flag: Mapped[BiomarkerFlag | None] = mapped_column(Enum(BiomarkerFlag), nullable=True)
+    flag: Mapped[BiomarkerFlag | None] = mapped_column(PgEnum(BiomarkerFlag), nullable=True)
     test_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     lab_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_pdf_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

@@ -1,12 +1,12 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.db.base import Base, UUIDMixin
+from app.db.base import Base, PgEnum, UUIDMixin
 
 
 class NudgeType(str, enum.Enum):
@@ -25,7 +25,7 @@ class Nudge(Base, UUIDMixin):
     client_id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False, index=True
     )
-    nudge_type: Mapped[NudgeType] = mapped_column(Enum(NudgeType), nullable=False)
+    nudge_type: Mapped[NudgeType] = mapped_column(PgEnum(NudgeType), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

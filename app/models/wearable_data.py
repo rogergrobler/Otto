@@ -1,12 +1,12 @@
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.db.base import Base, UUIDMixin
+from app.db.base import Base, PgEnum, UUIDMixin
 
 
 class WearableSource(str, enum.Enum):
@@ -25,7 +25,7 @@ class WearableData(Base, UUIDMixin):
     )
     data_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     source: Mapped[WearableSource] = mapped_column(
-        Enum(WearableSource), nullable=False, default=WearableSource.MANUAL
+        PgEnum(WearableSource), nullable=False, default=WearableSource.MANUAL
     )
 
     # Sleep
