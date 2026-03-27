@@ -7,10 +7,14 @@ from app.api.clients import router as clients_router
 from app.api.conversations import router as conversations_router
 from app.api.coursework import router as coursework_router
 from app.api.documents import router as documents_router
+from app.api.coach import router as coach_router
 from app.api.health.goals import router as goals_router
 from app.api.health.labs import router as labs_router
 from app.api.health.nutrition import router as nutrition_router
 from app.api.health.profile import router as profile_router
+from app.api.health.risk import router as risk_router
+from app.api.health.wearables import router as wearables_router
+from app.api.nudges import router as nudges_router
 from app.api.telegram_webhook import router as telegram_router
 from app.api.voice import router as voice_router
 
@@ -25,7 +29,13 @@ health_router.include_router(profile_router)
 health_router.include_router(labs_router)
 health_router.include_router(nutrition_router)
 health_router.include_router(goals_router)
+health_router.include_router(risk_router)
+health_router.include_router(wearables_router)
 api_router.include_router(health_router)
+
+# Phase 3 — nudges & coach portal
+api_router.include_router(nudges_router)
+api_router.include_router(coach_router)
 
 # Chat
 api_router.include_router(chat_router)
