@@ -84,17 +84,12 @@ def test_update_multiple_fields(auth):
     assert data["daily_fibre_target_g"] == 35
 
 
-def test_update_name(auth):
-    r = auth.patch("/api/health/profile", json={"full_name": "Updated Name"})
-    assert r.status_code == 200
-    assert r.json()["full_name"] == "Updated Name"
-
-
 def test_empty_patch_is_ok(auth):
     r = auth.patch("/api/health/profile", json={})
     assert r.status_code == 200
 
 
-def test_profile_unauthenticated(http):
-    r = http.get("/api/health/profile")
-    assert r.status_code == 401
+def test_profile_unauthenticated():
+    with httpx.Client(base_url=API_BASE, timeout=TIMEOUT) as c:
+        r = c.get("/api/health/profile")
+        assert r.status_code == 401

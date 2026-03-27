@@ -77,7 +77,7 @@ export default function DashboardPage() {
         if (labsData.status === "fulfilled") setLabs(labsData.value.slice(0, 3));
         if (nutritionData.status === "fulfilled") setNutrition(nutritionData.value);
         if (wearablesData.status === "fulfilled") setWearables(wearablesData.value.slice(0, 1));
-        if (nudgesData.status === "fulfilled") setNudges(nudgesData.value.filter((n) => !n.acknowledged));
+        if (nudgesData.status === "fulfilled") setNudges(nudgesData.value.filter((n) => !n.acknowledged_at));
       } catch {
         setError("Failed to load dashboard data.");
       } finally {
@@ -124,7 +124,7 @@ export default function DashboardPage() {
         </div>
         {unreadCount > 0 && (
           <button
-            onClick={() => router.push("/chat")}
+            onClick={() => router.push("/nudges")}
             className="relative p-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-gray-400">

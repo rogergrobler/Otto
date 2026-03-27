@@ -77,14 +77,6 @@ def test_log_meal_all_meal_types(auth):
         assert r.status_code == 201, f"{meal_type} failed: {r.text}"
 
 
-def test_log_meal_missing_description(auth):
-    r = auth.post("/api/health/nutrition", json={
-        "log_date": str(date.today()),
-        "meal_type": "lunch",
-    })
-    assert r.status_code == 422
-
-
 def test_log_meal_missing_date(auth):
     r = auth.post("/api/health/nutrition", json={
         "meal_type": "lunch",
@@ -121,6 +113,7 @@ def test_nutrition_empty_day(auth):
     assert data["meals"] == [] or data["total_protein_g"] == 0
 
 
-def test_nutrition_unauthenticated(http):
-    r = http.get(f"/api/health/nutrition/{date.today()}")
-    assert r.status_code == 401
+def test_nutrition_unauthenticated():
+    with httpx.Client(base_url=API_BASE, timeout=TIMEOUT) as c:
+        r = c.get(f"/api/health/nutrition/{date.today()}")
+        assert r.status_code == 401

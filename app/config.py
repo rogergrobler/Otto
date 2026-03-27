@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "claude"
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
-    LLM_MODEL: str = "claude-sonnet-4-20250514"
+    LLM_MODEL: str = "claude-haiku-4-5-20251001"
     EMBEDDING_MODEL: str = "text-embedding-3-small"
 
     # Telegram

@@ -97,6 +97,7 @@ def test_acknowledge_other_users_nudge(auth, auth2):
     assert r.status_code == 404  # Returns 404 (not found for that user), not 403
 
 
-def test_nudges_unauthenticated(http):
-    r = http.get("/api/nudges")
-    assert r.status_code == 401
+def test_nudges_unauthenticated():
+    with httpx.Client(base_url=API_BASE, timeout=TIMEOUT) as c:
+        r = c.get("/api/nudges")
+        assert r.status_code == 401

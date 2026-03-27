@@ -132,6 +132,7 @@ def test_list_wearables_ordered_desc(auth):
     assert dates == sorted(dates, reverse=True)
 
 
-def test_wearables_unauthenticated(http):
-    r = http.get("/api/health/wearables")
-    assert r.status_code == 401
+def test_wearables_unauthenticated():
+    with httpx.Client(base_url=API_BASE, timeout=TIMEOUT) as c:
+        r = c.get("/api/health/wearables")
+        assert r.status_code == 401

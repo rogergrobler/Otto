@@ -106,15 +106,66 @@ export async function updateProfile(
 export interface LabResult {
   id: string;
   marker_name: string;
-  value: number;
+  value: number | null;
   unit: string;
   status: "optimal" | "normal" | "borderline" | "high" | "low" | "insufficient_data";
   reference_range?: string;
   tested_at: string;
 }
 
+function mapFlag(flag: string | null | undefined): LabResult["status"] {
+  const map: Record<string, LabResult["status"]> = {
+    optimal: "optimal",
+    normal: "normal",
+    borderline: "borderline",
+    high: "high",
+    low: "low",
+  };
+  return map[flag ?? ""] ?? "normal";
+}
+
+function adaptLab(raw: Record<string, unknown>): LabResult {
+  const low = raw.ref_range_low as number | null;
+  const high = raw.ref_range_high as number | null;
+  return {
+    id: raw.id as string,
+    marker_name: raw.marker_name as string,
+    value: raw.value as number | null,
+    unit: (raw.unit as string) ?? "",
+    status: mapFlag(raw.flag as string | null),
+    reference_range: low != null && high != null ? `${low}–${high}` : undefined,
+    tested_at: (raw.test_date as string) ?? (raw.tested_at as string) ?? "",
+  };
+}
+
 export async function getLabs(): Promise<LabResult[]> {
-  return request<LabResult[]>("/health/labs");
+  const raw = await request<Record<string, unknown>[]>("/health/labs");
+  return (raw ?? []).map(adaptLab);
+}
+
+export interface CreateLabData {
+  marker_name: string;
+  value: number;
+  unit: string;
+  tested_at: string;
+  reference_range?: string;
+}
+
+export async function createLab(data: CreateLabData): Promise<LabResult> {
+  const payload: Record<string, unknown> = {
+    marker_name: data.marker_name,
+    value: data.value,
+    unit: data.unit,
+    test_date: data.tested_at.slice(0, 10),
+  };
+  if (data.reference_range) {
+    payload.notes = data.reference_range;
+  }
+  const raw = await request<Record<string, unknown>>("/health/labs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return adaptLab(raw);
 }
 
 // ---- Nutrition ----
@@ -146,7 +197,32 @@ export interface NutritionToday {
 }
 
 export async function getNutritionToday(): Promise<NutritionToday> {
-  return request<NutritionToday>("/health/nutrition/today");
+  const raw = await request<Record<string, unknown>>("/health/nutrition/today");
+  const meals = (raw.meals as Record<string, unknown>[] | undefined) ?? [];
+  const targets = (raw.targets as Record<string, number | null> | undefined) ?? {};
+  return {
+    entries: meals.map((m) => ({
+      id: m.id as string,
+      meal_name: (m.description as string) || (m.meal_type as string) || "Meal",
+      calories: (m.calories as number | undefined) ?? undefined,
+      protein_g: (m.protein_g as number | undefined) ?? undefined,
+      fibre_g: (m.fibre_g as number | undefined) ?? undefined,
+      carbs_g: (m.carbs_net_g as number | undefined) ?? undefined,
+      fat_g: (m.fat_g as number | undefined) ?? undefined,
+      logged_at: (m.created_at as string) ?? (raw.date as string) ?? new Date().toISOString(),
+    })),
+    totals: {
+      calories: (raw.total_calories as number) ?? 0,
+      protein_g: (raw.total_protein_g as number) ?? 0,
+      fibre_g: (raw.total_fibre_g as number) ?? 0,
+      carbs_g: (raw.total_carbs_net_g as number) ?? 0,
+      fat_g: (raw.total_fat_g as number) ?? 0,
+    },
+    targets: {
+      protein_g: (targets.protein_g as number | null) ?? 0,
+      fibre_g: (targets.fibre_g as number | null) ?? 0,
+    },
+  };
 }
 
 export interface LogMealData {
@@ -159,17 +235,36 @@ export interface LogMealData {
 }
 
 export async function logMeal(data: LogMealData): Promise<NutritionEntry> {
-  return request<NutritionEntry>("/health/nutrition", {
+  const payload = {
+    description: data.meal_name,
+    meal_type: "other",
+    calories: data.calories,
+    protein_g: data.protein_g,
+    fibre_g: data.fibre_g,
+    carbs_net_g: data.carbs_g,
+    fat_g: data.fat_g,
+  };
+  const raw = await request<Record<string, unknown>>("/health/nutrition", {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
+  return {
+    id: raw.id as string,
+    meal_name: (raw.description as string) || "Meal",
+    calories: raw.calories as number | undefined,
+    protein_g: raw.protein_g as number | undefined,
+    fibre_g: raw.fibre_g as number | undefined,
+    carbs_g: raw.carbs_net_g as number | undefined,
+    fat_g: raw.fat_g as number | undefined,
+    logged_at: (raw.created_at as string) ?? new Date().toISOString(),
+  };
 }
 
 // ---- Goals ----
 
 export interface Goal {
   id: string;
-  domain: "cardiovascular" | "metabolic" | "neurological" | "cancer" | "general";
+  domain: "cardiovascular" | "metabolic" | "neurological" | "cancer" | "cancer_prevention" | "nutrition" | "training" | "body_composition" | "sleep" | "supplements" | "general";
   title: string;
   description?: string;
   current_value?: number;
@@ -180,7 +275,24 @@ export interface Goal {
 }
 
 export async function getGoals(): Promise<Goal[]> {
-  return request<Goal[]>("/health/goals");
+  const raw = await request<Record<string, unknown>[]>("/health/goals");
+  return (raw ?? []).map((g) => {
+    const rawStatus = g.status as string;
+    const status: Goal["status"] =
+      rawStatus === "completed" ? "achieved" :
+      rawStatus === "abandoned" ? "paused" :
+      rawStatus === "paused" ? "paused" : "active";
+    return {
+      id: g.id as string,
+      domain: (g.domain as Goal["domain"]) ?? "general",
+      title: (g.goal_text as string) ?? (g.title as string) ?? "",
+      description: g.target_metric as string | undefined,
+      current_value: g.current_value ? parseFloat(g.current_value as string) : undefined,
+      target_value: g.target_value ? parseFloat(g.target_value as string) : undefined,
+      deadline: g.deadline as string | undefined,
+      status,
+    };
+  });
 }
 
 // ---- Wearables ----
@@ -195,7 +307,59 @@ export interface WearableDay {
 }
 
 export async function getWearables(): Promise<WearableDay[]> {
-  return request<WearableDay[]>("/health/wearables");
+  const raw = await request<Record<string, unknown>[]>("/health/wearables");
+  return (raw ?? []).map((w) => ({
+    date: (w.data_date as string) ?? (w.date as string) ?? "",
+    sleep_hours: w.sleep_hours as number | undefined,
+    hrv_ms: w.hrv_ms as number | undefined,
+    recovery_score: w.recovery_score as number | undefined,
+    zone2_mins: (w.zone2_minutes as number | undefined) ?? (w.zone2_mins as number | undefined),
+    steps: w.steps as number | undefined,
+  }));
+}
+
+export async function upsertWearable(data: Partial<WearableDay> & { date: string }): Promise<WearableDay> {
+  const payload = {
+    data_date: data.date,
+    source: "manual",
+    sleep_hours: data.sleep_hours,
+    hrv_ms: data.hrv_ms,
+    recovery_score: data.recovery_score,
+    zone2_minutes: data.zone2_mins,
+    steps: data.steps,
+  };
+  const raw = await request<Record<string, unknown>>("/health/wearables", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return {
+    date: raw.data_date as string,
+    sleep_hours: raw.sleep_hours as number | undefined,
+    hrv_ms: raw.hrv_ms as number | undefined,
+    recovery_score: raw.recovery_score as number | undefined,
+    zone2_mins: raw.zone2_minutes as number | undefined,
+    steps: raw.steps as number | undefined,
+  };
+}
+
+// ---- WHOOP ----
+
+export interface WhoopStatus {
+  connected: boolean;
+  provider_user_id?: string;
+  token_expiry?: string;
+}
+
+export async function getWhoopStatus(): Promise<WhoopStatus> {
+  return request<WhoopStatus>("/integrations/whoop/status");
+}
+
+export async function getWhoopConnectUrl(): Promise<{ url: string }> {
+  return request<{ url: string }>("/integrations/whoop/connect-url");
+}
+
+export async function syncWhoop(): Promise<{ status: string; synced: Record<string, number>; message: string }> {
+  return request("/integrations/whoop/sync", { method: "POST" });
 }
 
 // ---- Risk ----
@@ -210,27 +374,43 @@ export interface RiskData {
   };
 }
 
+type RagStatus = "green" | "amber" | "red" | "insufficient_data";
+
 export async function getRisk(): Promise<RiskData> {
-  return request<RiskData>("/health/risk");
+  const raw = await request<Record<string, unknown>>("/health/risk");
+  const domainMap: Record<string, RagStatus> = {};
+  const domains = (raw.domains as Record<string, unknown>[]) ?? [];
+  domains.forEach((d) => {
+    domainMap[d.domain as string] = (d.rag_status as RagStatus) ?? "insufficient_data";
+  });
+  return {
+    overall_score: (raw.health_score as number) ?? 0,
+    domains: {
+      cardiovascular: domainMap.cardiovascular ?? "insufficient_data",
+      metabolic: domainMap.metabolic ?? "insufficient_data",
+      neurological: domainMap.neurological ?? "insufficient_data",
+      cancer: domainMap.cancer_prevention ?? domainMap.cancer ?? "insufficient_data",
+    },
+  };
 }
 
 // ---- Nudges ----
 
 export interface Nudge {
   id: string;
+  nudge_type: string;
   message: string;
-  domain?: string;
-  priority: "low" | "medium" | "high";
-  acknowledged: boolean;
-  created_at: string;
+  scheduled_at: string;
+  sent_at: string | null;
+  acknowledged_at: string | null;
 }
 
-export async function getNudges(): Promise<Nudge[]> {
-  return request<Nudge[]>("/nudges");
+export async function getNudges(unreadOnly = false): Promise<Nudge[]> {
+  return request<Nudge[]>(`/nudges?unread_only=${unreadOnly}`);
 }
 
-export async function acknowledgeNudge(id: string): Promise<void> {
-  return request<void>(`/nudges/${id}/acknowledge`, { method: "POST" });
+export async function acknowledgeNudge(id: string): Promise<Nudge> {
+  return request<Nudge>(`/nudges/${id}/acknowledge`, { method: "POST" });
 }
 
 // ---- Chat ----
@@ -247,8 +427,12 @@ export interface ChatResponse {
 }
 
 export async function sendMessage(text: string): Promise<ChatResponse> {
-  return request<ChatResponse>("/chat", {
+  const raw = await request<Record<string, unknown>>("/chat", {
     method: "POST",
     body: JSON.stringify({ message: text }),
   });
+  return {
+    reply: (raw.response as string) ?? (raw.reply as string) ?? "",
+    message: raw.message as ChatMessage | undefined,
+  };
 }

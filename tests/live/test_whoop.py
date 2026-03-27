@@ -42,9 +42,10 @@ def test_whoop_status_not_connected(auth):
     assert data["connected"] is False
 
 
-def test_whoop_status_unauthenticated(http):
-    r = http.get("/api/integrations/whoop/status")
-    assert r.status_code == 401
+def test_whoop_status_unauthenticated():
+    with httpx.Client(base_url=API_BASE, timeout=TIMEOUT) as c:
+        r = c.get("/api/integrations/whoop/status")
+        assert r.status_code == 401
 
 
 # ── Connect URL ───────────────────────────────────────────────────────────────
@@ -75,9 +76,10 @@ def test_whoop_connect_url_has_required_params(auth):
     assert "scope=" in url
 
 
-def test_whoop_connect_url_unauthenticated(http):
-    r = http.get("/api/integrations/whoop/connect-url")
-    assert r.status_code == 401
+def test_whoop_connect_url_unauthenticated():
+    with httpx.Client(base_url=API_BASE, timeout=TIMEOUT) as c:
+        r = c.get("/api/integrations/whoop/connect-url")
+        assert r.status_code == 401
 
 
 # ── Sync (without connection) ─────────────────────────────────────────────────

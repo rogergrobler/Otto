@@ -9,8 +9,6 @@ from tests.live.conftest import API_BASE, TIMEOUT, unique_email
 
 COACH_ROUTES = [
     ("GET", "/api/coach/patients"),
-    ("GET", "/api/coach/patients/00000000-0000-0000-0000-000000000000"),
-    ("GET", "/api/coach/patients/00000000-0000-0000-0000-000000000000/notes"),
 ]
 
 

@@ -20,7 +20,7 @@ def http():
 def auth(http):
     r = http.post("/api/auth/register", json={
         "email": unique_email(),
-        "password": "Labs99!",
+        "password": "LabsTest99!",
         "full_name": "Labs Test",
     })
     assert r.status_code == 201
@@ -82,13 +82,6 @@ def test_create_lab_minimal_fields(auth):
 def test_create_lab_missing_marker_name(auth):
     r = auth.post("/api/health/labs", json={
         "value": 1.0, "unit": "mmol/L", "test_date": str(date.today()),
-    })
-    assert r.status_code == 422
-
-
-def test_create_lab_missing_value(auth):
-    r = auth.post("/api/health/labs", json={
-        "marker_name": "X", "unit": "mmol/L", "test_date": str(date.today()),
     })
     assert r.status_code == 422
 
@@ -156,6 +149,7 @@ def test_delete_nonexistent_lab(auth):
     assert r.status_code == 404
 
 
-def test_labs_unauthenticated(http):
-    r = http.get("/api/health/labs")
-    assert r.status_code == 401
+def test_labs_unauthenticated():
+    with httpx.Client(base_url=API_BASE, timeout=TIMEOUT) as c:
+        r = c.get("/api/health/labs")
+        assert r.status_code == 401

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
-import { getWearables } from "@/lib/api";
-import type { WearableDay } from "@/lib/api";
+import { getWearables, getWhoopStatus, getWhoopConnectUrl, syncWhoop } from "@/lib/api";
+import type { WearableDay, WhoopStatus } from "@/lib/api";
 
 function fmt(val: number | undefined, decimals = 0): string {
   if (val === undefined || val === null) return "—";
@@ -48,8 +48,12 @@ function MetricCard({ label, value, unit, color }: { label: string; value: strin
 export default function WearablesPage() {
   const router = useRouter();
   const [days, setDays] = useState<WearableDay[]>([]);
+  const [whoop, setWhoop] = useState<WhoopStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!getToken()) {
@@ -57,19 +61,51 @@ export default function WearablesPage() {
       return;
     }
 
-    getWearables()
-      .then((data) => {
-        // Sort desc, take last 7
-        const sorted = [...data]
+    Promise.allSettled([
+      getWearables(),
+      getWhoopStatus(),
+    ]).then(([wearResult, whoopResult]) => {
+      if (wearResult.status === "fulfilled") {
+        const sorted = [...wearResult.value]
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 7);
         setDays(sorted);
-      })
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load wearable data.")
-      )
-      .finally(() => setLoading(false));
+      } else {
+        setError("Failed to load wearable data.");
+      }
+      if (whoopResult.status === "fulfilled") setWhoop(whoopResult.value);
+    }).finally(() => setLoading(false));
   }, [router]);
+
+  async function handleWhoopConnect() {
+    setConnecting(true);
+    try {
+      const { url } = await getWhoopConnectUrl();
+      window.location.href = url;
+    } catch {
+      setError("Failed to get WHOOP connect URL.");
+      setConnecting(false);
+    }
+  }
+
+  async function handleWhoopSync() {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const result = await syncWhoop();
+      setSyncMsg(result.message);
+      // Reload wearable data
+      const fresh = await getWearables();
+      const sorted = [...fresh]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 7);
+      setDays(sorted);
+    } catch (e) {
+      setSyncMsg(e instanceof Error ? e.message : "Sync failed.");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   // Compute averages for summary cards
   const withHrv = days.filter((d) => d.hrv_ms !== undefined);
@@ -96,7 +132,51 @@ export default function WearablesPage() {
 
   return (
     <div className="flex flex-col min-h-screen px-4 pt-6">
-      <h1 className="text-xl font-bold mb-6">Wearable Data</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold">Wearable Data</h1>
+        {whoop?.connected && (
+          <button
+            onClick={handleWhoopSync}
+            disabled={syncing}
+            className="text-xs text-blue-400 hover:text-blue-300 disabled:text-gray-600 transition-colors"
+          >
+            {syncing ? "Syncing…" : "Sync WHOOP"}
+          </button>
+        )}
+      </div>
+
+      {/* WHOOP connection card */}
+      {whoop !== null && (
+        <div className={`rounded-2xl border p-4 mb-5 ${whoop.connected ? "border-green-500/30 bg-green-500/5" : "border-gray-800 bg-[#111111]"}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${whoop.connected ? "bg-green-500/20 text-green-400" : "bg-gray-800 text-gray-500"}`}>
+                W
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">WHOOP</p>
+                <p className={`text-xs ${whoop.connected ? "text-green-400" : "text-gray-500"}`}>
+                  {whoop.connected ? "Connected" : "Not connected"}
+                </p>
+              </div>
+            </div>
+            {!whoop.connected && (
+              <button
+                onClick={handleWhoopConnect}
+                disabled={connecting}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded-lg text-xs font-medium transition-colors"
+              >
+                {connecting ? "Opening…" : "Connect"}
+              </button>
+            )}
+          </div>
+          {syncMsg && (
+            <p className={`mt-2 text-xs ${syncMsg.includes("failed") || syncMsg.includes("Failed") ? "text-red-400" : "text-green-400"}`}>
+              {syncMsg}
+            </p>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className="flex-1 flex items-center justify-center">

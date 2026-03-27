@@ -50,7 +50,7 @@ def test_create_goal_response_fields(auth):
 
 
 def test_create_goal_all_domains(auth):
-    for domain in ["cardiovascular", "metabolic", "neurological", "cancer", "general"]:
+    for domain in ["cardiovascular", "metabolic", "neurological", "cancer_prevention", "general"]:
         r = auth.post("/api/health/goals", json={
             "domain": domain,
             "goal_text": f"Test goal for {domain}",
@@ -103,6 +103,7 @@ def test_list_goals_contains_created(auth):
     assert "cardiovascular" in domains
 
 
-def test_goals_unauthenticated(http):
-    r = http.get("/api/health/goals")
-    assert r.status_code == 401
+def test_goals_unauthenticated():
+    with httpx.Client(base_url=API_BASE, timeout=TIMEOUT) as c:
+        r = c.get("/api/health/goals")
+        assert r.status_code == 401
