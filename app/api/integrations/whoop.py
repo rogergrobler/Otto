@@ -32,6 +32,16 @@ router = APIRouter(prefix="/integrations/whoop", tags=["integrations"])
 _pending_states: dict[str, str] = {}
 
 
+@router.get("/connect-url")
+async def connect_whoop_url(
+    client: Client = Depends(get_current_client),
+):
+    """Return the WHOOP OAuth URL as JSON (for frontend use)."""
+    state = secrets.token_urlsafe(32)
+    _pending_states[state] = str(client.id)
+    return {"url": build_auth_url(state)}
+
+
 @router.get("/connect")
 async def connect_whoop(
     client: Client = Depends(get_current_client),

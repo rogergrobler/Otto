@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     WHOOP_CLIENT_ID: str = ""
     WHOOP_CLIENT_SECRET: str = ""
 
+    # CORS — comma-separated list of allowed origins
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "https://frontend-lyart-ten-72.vercel.app",
+    ]
+
     # Storage (local filesystem for Phase 1; swap for S3 later)
     UPLOAD_DIR: str = "uploads"
 
