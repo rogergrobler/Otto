@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Wearable integrations
+    WHOOP_CLIENT_ID: str = ""
+    WHOOP_CLIENT_SECRET: str = ""
+
     # Storage (local filesystem for Phase 1; swap for S3 later)
     UPLOAD_DIR: str = "uploads"
 

@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.db.session import async_session as AsyncSessionLocal
 from app.models.client import Client
 from app.services.nudge_service import (
+    deliver_nudge,
     generate_biomarker_due_nudge,
     generate_daily_checkin,
     generate_meal_reminder,
@@ -28,7 +29,9 @@ async def _run_for_all_clients(fn) -> None:
         clients = result.scalars().all()
         for client in clients:
             try:
-                await fn(db, client)
+                nudge = await fn(db, client)
+                if nudge:
+                    await deliver_nudge(nudge, client)
             except Exception as exc:
                 logger.error(f"Nudge error [{fn.__name__}] client={client.id}: {exc}")
         await db.commit()

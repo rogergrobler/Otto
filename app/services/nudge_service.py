@@ -22,6 +22,20 @@ from app.models.wearable_data import WearableData
 
 logger = logging.getLogger(__name__)
 
+
+async def deliver_nudge(nudge: Nudge, client: Client) -> None:
+    """Send a nudge via Telegram if the client has a linked chat_id."""
+    if not client.telegram_chat_id:
+        return
+    try:
+        from app.telegram.bot import send_message
+        await send_message(client.telegram_chat_id, nudge.message)
+        nudge.sent_at = datetime.now(timezone.utc)
+        logger.info(f"Nudge delivered via Telegram to client {client.id}")
+    except Exception as exc:
+        logger.warning(f"Telegram delivery failed for client {client.id}: {exc}")
+
+
 NUDGE_SYSTEM = """You are Otto, a personal health twin assistant. Generate a short, warm,
 personalised nudge message for the user. Be direct and specific — reference their actual data.
 Never be preachy. Keep it to 1-2 sentences. No emojis."""

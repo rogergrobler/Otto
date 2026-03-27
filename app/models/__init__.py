@@ -13,6 +13,7 @@ from app.models.risk_score import RiskScore
 from app.models.training_note import TrainingNote
 from app.models.user import User
 from app.models.wearable_data import WearableData
+from app.models.wearable_integration import WearableIntegration
 
 __all__ = [
     "Client",
@@ -30,4 +31,5 @@ __all__ = [
     "TrainingNote",
     "User",
     "WearableData",
+    "WearableIntegration",
 ]

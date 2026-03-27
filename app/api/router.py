@@ -8,6 +8,7 @@ from app.api.conversations import router as conversations_router
 from app.api.coursework import router as coursework_router
 from app.api.documents import router as documents_router
 from app.api.coach import router as coach_router
+from app.api.integrations.whoop import router as whoop_router
 from app.api.health.goals import router as goals_router
 from app.api.health.labs import router as labs_router
 from app.api.health.nutrition import router as nutrition_router
@@ -36,6 +37,9 @@ api_router.include_router(health_router)
 # Phase 3 — nudges & coach portal
 api_router.include_router(nudges_router)
 api_router.include_router(coach_router)
+
+# Integrations
+api_router.include_router(whoop_router)
 
 # Chat
 api_router.include_router(chat_router)
