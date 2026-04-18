@@ -5,6 +5,32 @@ import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
 import { sendMessage } from "@/lib/api";
 
+function renderInline(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("*") && part.endsWith("*")) return <em key={i}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+}
+
+function MarkdownText({ content }: { content: string }) {
+  const lines = content.split("\n");
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        if (/^---+$/.test(line)) return <hr key={i} className="border-gray-600 my-1" />;
+        if (/^### /.test(line)) return <p key={i} className="font-semibold text-sm">{renderInline(line.slice(4))}</p>;
+        if (/^## /.test(line)) return <p key={i} className="font-bold text-sm">{renderInline(line.slice(3))}</p>;
+        if (/^# /.test(line)) return <p key={i} className="font-bold">{renderInline(line.slice(2))}</p>;
+        if (/^[-*] /.test(line)) return <div key={i} className="flex gap-1.5"><span className="flex-shrink-0 mt-0.5">•</span><span>{renderInline(line.slice(2))}</span></div>;
+        if (line === "") return <div key={i} className="h-1" />;
+        return <p key={i}>{renderInline(line)}</p>;
+      })}
+    </div>
+  );
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -177,9 +203,8 @@ export default function ChatPage() {
                     ? "bg-blue-600 text-white rounded-br-sm"
                     : "bg-[#1a1a1a] text-gray-100 rounded-bl-sm"
                 }`}
-                style={{ whiteSpace: "pre-wrap" }}
               >
-                {msg.content}
+                {msg.role === "assistant" ? <MarkdownText content={msg.content} /> : msg.content}
               </div>
               <p
                 className={`text-[10px] text-gray-600 ${

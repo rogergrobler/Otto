@@ -59,7 +59,11 @@ function FieldRow({
         )
       ) : (
         <span className="text-sm text-gray-200 text-right">
-          {value || <span className="text-gray-600">Not set</span>}
+          {value
+            ? options
+              ? (options.find((o) => o.value === value)?.label ?? value)
+              : value
+            : <span className="text-gray-600">Not set</span>}
         </span>
       )}
     </div>

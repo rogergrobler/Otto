@@ -236,6 +236,7 @@ export interface LogMealData {
 
 export async function logMeal(data: LogMealData): Promise<NutritionEntry> {
   const payload = {
+    log_date: new Date().toISOString().slice(0, 10),
     description: data.meal_name,
     meal_type: "other",
     calories: data.calories,
@@ -293,6 +294,30 @@ export async function getGoals(): Promise<Goal[]> {
       status,
     };
   });
+}
+
+export interface CreateGoalData {
+  domain: Goal["domain"];
+  goal_text: string;
+  target_metric?: string;
+  deadline?: string;
+}
+
+export async function createGoal(data: CreateGoalData): Promise<Goal> {
+  const raw = await request<Record<string, unknown>>("/health/goals", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return {
+    id: raw.id as string,
+    domain: (raw.domain as Goal["domain"]) ?? "general",
+    title: (raw.goal_text as string) ?? "",
+    description: raw.target_metric as string | undefined,
+    current_value: undefined,
+    target_value: undefined,
+    deadline: raw.deadline as string | undefined,
+    status: "active",
+  };
 }
 
 // ---- Wearables ----
