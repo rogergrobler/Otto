@@ -341,11 +341,31 @@ async def _execute_log_meal(db: AsyncSession, client_id, inputs: dict) -> dict:
     except ValueError:
         meal_type = MealType.OTHER
 
+    description = inputs.get("description")
+
+    # Dedup: if an identical meal (same client, date, description) was logged in the
+    # last 2 minutes, return the existing entry rather than creating a duplicate.
+    # This prevents double-logging when Claude calls the tool during both the
+    # estimate pass and the confirmation pass.
+    if description:
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
+        existing = await db.execute(
+            select(NutritionLog).where(
+                NutritionLog.client_id == client_id,
+                NutritionLog.log_date == log_date,
+                NutritionLog.description == description,
+                NutritionLog.created_at >= cutoff,
+            )
+        )
+        dupe = existing.scalars().first()
+        if dupe:
+            return {"success": True, "log_id": str(dupe.id), "message": f"Meal already logged for {log_date} (duplicate prevented)."}
+
     log = NutritionLog(
         client_id=client_id,
         log_date=log_date,
         meal_type=meal_type,
-        description=inputs.get("description"),
+        description=description,
         calories=inputs.get("calories"),
         protein_g=inputs.get("protein_g"),
         fat_g=inputs.get("fat_g"),
