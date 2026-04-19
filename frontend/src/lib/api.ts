@@ -42,6 +42,36 @@ async function request<T>(
   return JSON.parse(text) as T;
 }
 
+// Multipart upload — does NOT set Content-Type (browser sets it with boundary)
+async function upload<T>(path: string, formData: FormData): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      window.location.href = "/login";
+    }
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(errBody || `HTTP ${res.status}`);
+  }
+
+  const text = await res.text();
+  if (!text) return {} as T;
+  return JSON.parse(text) as T;
+}
+
 // ---- Auth ----
 
 export interface LoginResponse {
@@ -203,6 +233,39 @@ export async function createLab(data: CreateLabData): Promise<LabResult> {
   return adaptLab(raw);
 }
 
+export interface LabOCRMarker {
+  marker_name: string;
+  value: number | null;
+  value_text?: string;
+  unit?: string;
+  flag?: string;
+  ref_range_low?: number;
+  ref_range_high?: number;
+  test_date?: string;
+  lab_name?: string;
+  notes?: string;
+}
+
+export interface LabOCRResult {
+  lab_name?: string;
+  test_date?: string;
+  markers: LabOCRMarker[];
+}
+
+export async function uploadLabPDF(file: File): Promise<LabOCRResult> {
+  const form = new FormData();
+  form.append("file", file);
+  return upload<LabOCRResult>("/health/labs/upload", form);
+}
+
+export async function confirmLabOCR(payload: LabOCRResult): Promise<LabResult[]> {
+  const raw = await request<Record<string, unknown>[]>("/health/labs/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return (raw ?? []).map(adaptLab);
+}
+
 // ---- Nutrition ----
 
 export interface NutritionEntry {
@@ -283,6 +346,44 @@ export async function logMeal(data: LogMealData): Promise<NutritionEntry> {
   const raw = await request<Record<string, unknown>>("/health/nutrition", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+  return {
+    id: raw.id as string,
+    meal_name: (raw.description as string) || "Meal",
+    calories: raw.calories as number | undefined,
+    protein_g: raw.protein_g as number | undefined,
+    fibre_g: raw.fibre_g as number | undefined,
+    carbs_g: raw.carbs_net_g as number | undefined,
+    fat_g: raw.fat_g as number | undefined,
+    logged_at: (raw.created_at as string) ?? new Date().toISOString(),
+  };
+}
+
+export interface MealAnalysis {
+  description: string;
+  meal_type: string;
+  calories?: number;
+  protein_g?: number;
+  fat_g?: number;
+  carbs_net_g?: number;
+  fibre_g?: number;
+  omega3_g?: number;
+  confidence: "high" | "medium" | "low";
+  notes?: string;
+}
+
+export async function analyseMealPhoto(file: File): Promise<MealAnalysis> {
+  const form = new FormData();
+  form.append("file", file);
+  return upload<MealAnalysis>("/health/nutrition/analyse", form);
+}
+
+export async function confirmMealAnalysis(
+  analysis: MealAnalysis
+): Promise<NutritionEntry> {
+  const raw = await request<Record<string, unknown>>("/health/nutrition/confirm", {
+    method: "POST",
+    body: JSON.stringify(analysis),
   });
   return {
     id: raw.id as string,

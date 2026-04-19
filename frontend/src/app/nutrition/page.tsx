@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
-import { getNutritionToday, logMeal } from "@/lib/api";
-import type { NutritionToday, LogMealData } from "@/lib/api";
+import { getNutritionToday, logMeal, analyseMealPhoto, confirmMealAnalysis } from "@/lib/api";
+import type { NutritionToday, LogMealData, MealAnalysis } from "@/lib/api";
 
 function MacroBar({
   label,
@@ -47,26 +47,21 @@ function LogMealModal({
   onClose: () => void;
   onLogged: () => void;
 }) {
-  const [form, setForm] = useState<LogMealData>({
-    meal_name: "",
-    calories: undefined,
-    protein_g: undefined,
-    fibre_g: undefined,
-    carbs_g: undefined,
-    fat_g: undefined,
-  });
+  const [tab, setTab] = useState<"photo" | "manual">("photo");
+  const [form, setForm] = useState<LogMealData>({ meal_name: "", calories: undefined, protein_g: undefined, fibre_g: undefined, carbs_g: undefined, fat_g: undefined });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Photo flow state
+  const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
+  const [analysing, setAnalysing] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value === "" ? undefined : name === "meal_name" ? value : parseFloat(value),
-    }));
+    setForm((prev) => ({ ...prev, [name]: value === "" ? undefined : name === "meal_name" ? value : parseFloat(value) }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.meal_name.trim()) return;
     setError(null);
@@ -82,9 +77,41 @@ function LogMealModal({
     }
   }
 
+  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setAnalysing(true);
+    try {
+      const result = await analyseMealPhoto(file);
+      setAnalysis(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to analyse photo.");
+    } finally {
+      setAnalysing(false);
+    }
+  }
+
+  async function handleConfirmPhoto() {
+    if (!analysis) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await confirmMealAnalysis(analysis);
+      onLogged();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save meal.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const confidenceColor = analysis?.confidence === "high" ? "text-green-400" : analysis?.confidence === "medium" ? "text-amber-400" : "text-red-400";
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60">
-      <div className="w-full max-w-md bg-[#111111] rounded-t-3xl p-6 space-y-4">
+      <div className="w-full max-w-md bg-[#111111] rounded-t-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Log a Meal</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
@@ -94,62 +121,107 @@ function LogMealModal({
           </button>
         </div>
 
-        {error && (
-          <p className="text-red-400 text-sm bg-red-500/10 px-3 py-2 rounded-lg">{error}</p>
+        {/* Tabs */}
+        <div className="flex gap-2 bg-[#1a1a1a] rounded-xl p-1">
+          {(["photo", "manual"] as const).map((t) => (
+            <button key={t} onClick={() => { setTab(t); setAnalysis(null); setError(null); }}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${tab === t ? "bg-blue-600 text-white" : "text-gray-500 hover:text-gray-300"}`}>
+              {t === "photo" ? "📷 Photo" : "Manual"}
+            </button>
+          ))}
+        </div>
+
+        {error && <p className="text-red-400 text-sm bg-red-500/10 px-3 py-2 rounded-lg">{error}</p>}
+
+        {/* Photo tab */}
+        {tab === "photo" && (
+          <div className="space-y-3">
+            {!analysis && !analysing && (
+              <>
+                <button onClick={() => fileRef.current?.click()}
+                  className="w-full h-32 border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-blue-500 hover:bg-blue-500/5 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-gray-600">
+                    <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm text-gray-400">Take or upload a photo</p>
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoFile} />
+                <p className="text-xs text-gray-600 text-center">Claude Vision estimates the macros. You confirm before saving.</p>
+              </>
+            )}
+
+            {analysing && (
+              <div className="flex flex-col items-center py-8 gap-3">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-gray-400 text-sm">Analysing your meal…</p>
+              </div>
+            )}
+
+            {analysis && (
+              <div className="space-y-3">
+                <div className="bg-[#1a1a1a] rounded-xl p-4 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm font-medium text-white">{analysis.description}</p>
+                    <span className={`text-xs font-medium ${confidenceColor}`}>{analysis.confidence} confidence</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    {[
+                      { label: "Protein", value: analysis.protein_g, unit: "g", color: "text-blue-400" },
+                      { label: "Fibre", value: analysis.fibre_g, unit: "g", color: "text-green-400" },
+                      { label: "Carbs", value: analysis.carbs_net_g, unit: "g", color: "text-amber-400" },
+                      { label: "Fat", value: analysis.fat_g, unit: "g", color: "text-red-400" },
+                      { label: "Omega-3", value: analysis.omega3_g, unit: "g", color: "text-purple-400" },
+                      { label: "Calories", value: analysis.calories, unit: "kcal", color: "text-gray-300" },
+                    ].filter(f => f.value != null).map((f) => (
+                      <div key={f.label} className="text-center">
+                        <p className={`text-sm font-semibold ${f.color}`}>{f.value}{f.unit}</p>
+                        <p className="text-xs text-gray-600">{f.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {analysis.notes && <p className="text-xs text-gray-500 pt-1">{analysis.notes}</p>}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => { setAnalysis(null); setError(null); }}
+                    className="flex-1 py-2.5 bg-[#1a1a1a] border border-gray-800 rounded-xl text-sm text-gray-400 hover:text-white transition-colors">
+                    Retake
+                  </button>
+                  <button onClick={handleConfirmPhoto} disabled={loading}
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 rounded-xl text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2">
+                    {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Save Meal"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <input
-              name="meal_name"
-              value={form.meal_name}
-              onChange={handleChange}
-              required
+        {/* Manual tab */}
+        {tab === "manual" && (
+          <form onSubmit={handleManualSubmit} className="space-y-3">
+            <input name="meal_name" value={form.meal_name} onChange={handleChange} required
               placeholder="Meal name (e.g. Chicken salad)"
-              className="w-full bg-[#1a1a1a] border border-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 text-sm"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {(
-              [
+              className="w-full bg-[#1a1a1a] border border-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 text-sm" />
+            <div className="grid grid-cols-2 gap-3">
+              {([
                 { name: "calories", label: "Calories (kcal)" },
                 { name: "protein_g", label: "Protein (g)" },
                 { name: "fibre_g", label: "Fibre (g)" },
                 { name: "carbs_g", label: "Carbs (g)" },
                 { name: "fat_g", label: "Fat (g)" },
-              ] as Array<{ name: keyof LogMealData; label: string }>
-            ).map((field) => (
-              <div key={field.name}>
-                <input
-                  name={field.name}
-                  type="number"
-                  min="0"
-                  step="0.1"
+              ] as Array<{ name: keyof LogMealData; label: string }>).map((field) => (
+                <input key={field.name} name={field.name} type="number" min="0" step="0.1"
                   value={(form[field.name] as number | undefined) ?? ""}
-                  onChange={handleChange}
-                  placeholder={field.label}
-                  className="w-full bg-[#1a1a1a] border border-gray-800 rounded-xl px-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 text-sm"
-                />
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !form.meal_name.trim()}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Logging…
-              </>
-            ) : (
-              "Log Meal"
-            )}
-          </button>
-        </form>
+                  onChange={handleChange} placeholder={field.label}
+                  className="w-full bg-[#1a1a1a] border border-gray-800 rounded-xl px-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 text-sm" />
+              ))}
+            </div>
+            <button type="submit" disabled={loading || !form.meal_name.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+              {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Logging…</> : "Log Meal"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
