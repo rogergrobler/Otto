@@ -88,17 +88,38 @@ export interface Profile {
   fibre_target_g?: number;
 }
 
+function adaptProfile(raw: Record<string, unknown>): Profile {
+  return {
+    ...(raw as unknown as Profile),
+    protein_target_g:
+      (raw.protein_target_g ?? raw.daily_protein_target_g) as number | undefined,
+    fibre_target_g:
+      (raw.fibre_target_g ?? raw.daily_fibre_target_g) as number | undefined,
+  };
+}
+
 export async function getProfile(): Promise<Profile> {
-  return request<Profile>("/health/profile");
+  const raw = await request<Record<string, unknown>>("/health/profile");
+  return adaptProfile(raw);
 }
 
 export async function updateProfile(
   data: Partial<Profile>
 ): Promise<Profile> {
-  return request<Profile>("/health/profile", {
+  const payload: Record<string, unknown> = { ...data };
+  if ("protein_target_g" in data) {
+    payload.daily_protein_target_g = data.protein_target_g;
+    delete payload.protein_target_g;
+  }
+  if ("fibre_target_g" in data) {
+    payload.daily_fibre_target_g = data.fibre_target_g;
+    delete payload.fibre_target_g;
+  }
+  const raw = await request<Record<string, unknown>>("/health/profile", {
     method: "PATCH",
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
+  return adaptProfile(raw);
 }
 
 // ---- Labs ----
@@ -275,6 +296,12 @@ export interface Goal {
   status: "active" | "achieved" | "paused";
 }
 
+function parseGoalNumeric(v: unknown): number | undefined {
+  if (v == null || v === "") return undefined;
+  const n = parseFloat(v as string);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export async function getGoals(): Promise<Goal[]> {
   const raw = await request<Record<string, unknown>[]>("/health/goals");
   return (raw ?? []).map((g) => {
@@ -288,8 +315,8 @@ export async function getGoals(): Promise<Goal[]> {
       domain: (g.domain as Goal["domain"]) ?? "general",
       title: (g.goal_text as string) ?? (g.title as string) ?? "",
       description: g.target_metric as string | undefined,
-      current_value: g.current_value ? parseFloat(g.current_value as string) : undefined,
-      target_value: g.target_value ? parseFloat(g.target_value as string) : undefined,
+      current_value: parseGoalNumeric(g.current_value),
+      target_value: parseGoalNumeric(g.target_value),
       deadline: g.deadline as string | undefined,
       status,
     };

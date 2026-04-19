@@ -607,7 +607,7 @@ async def process_health_message(
         training_notes=training_notes,
         client_profile=client_profile,
         memory_summary=client.memory_summary,
-        health_context=None,
+        health_context=f"Today's date: {date.today().isoformat()}",
     )
 
     # Build message history
